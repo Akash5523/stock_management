@@ -1,0 +1,600 @@
+{% extends "base.html" %} {% block title %}Inventory | Stratelink{% endblock %}
+{% block content %}
+
+<!-- 🔹 Inventory Container -->
+<div
+  id="inventoryContainer"
+  class="max-w-7xl mx-auto py-6 px-6 flex flex-col h-full"
+>
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6 flex-shrink-0">
+    <h1
+      class="text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2"
+    >
+      📋 <span>Inventory</span>
+    </h1>
+    <button
+      id="addItemBtn"
+      class="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 transition flex items-center gap-2 shadow"
+    >
+      ➕ <span>Add New Item</span>
+    </button>
+  </div>
+
+  <!-- 🔹 Table Section -->
+  <div
+    id="tableContainer"
+    class="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden flex flex-col flex-1"
+  >
+    <div
+      id="tableScrollWrapper"
+      class="overflow-auto scrollbar-thin scrollbar-thumb-gray-400 dark:scrollbar-thumb-gray-700"
+    >
+      <table
+        class="min-w-full text-sm text-left border-collapse table-auto whitespace-normal break-words"
+      >
+        <thead
+          class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 uppercase text-xs sticky top-0 z-20 shadow-sm"
+        >
+          <tr>
+            <th class="px-6 py-3">Item Code</th>
+            <th class="px-6 py-3">Description</th>
+            <th class="px-6 py-3">Inward Invoice Number</th>
+            <th class="px-6 py-3">Inward Date</th>
+            <th class="px-6 py-3">UOM</th>
+            <th class="px-6 py-3">Inward Quantity</th>
+            <th class="px-6 py-3">Inward Unit Price</th>
+            <th class="px-6 py-3">Inward Total Price</th>
+            <th class="px-6 py-3">Outward Quantity</th>
+            <th class="px-6 py-3">Balance Stock Quantity</th>
+            <th class="px-6 py-3">Status</th>
+            <th class="px-6 py-3">Outward Invoice Number</th>
+            <th class="px-6 py-3">Outward Date</th>
+            <th class="px-6 py-3">Outward Unit Price</th>
+            <th class="px-6 py-3">Outward Total Price</th>
+            <th class="px-6 py-3">E-Way Bill Number</th>
+            <th class="px-6 py-3">Vehicle Number</th>
+            <th class="px-6 py-3">PO Number</th>
+            <th class="px-6 py-3 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody
+          id="inventoryBody"
+          class="divide-y divide-gray-200 dark:divide-gray-700"
+        >
+          <tr>
+            <td
+              colspan="10"
+              class="px-6 py-4 text-center text-gray-500 dark:text-gray-400"
+            >
+              Loading...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 🔹 Add Item Modal -->
+<div
+  id="addItemModal"
+  class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex justify-center items-center z-50"
+>
+  <div
+    class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-2xl"
+  >
+    <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">
+      Add New Inventory Item
+    </h2>
+
+    <form id="addItemForm" class="space-y-3 grid grid-cols-2 gap-4">
+      <input
+        type="text"
+        name="item_code"
+        placeholder="Item Code"
+        required
+        class="px-4 py-2 border rounded-md col-span-1"
+      />
+      <input
+        type="text"
+        name="item_description"
+        placeholder="Description"
+        required
+        class="px-4 py-2 border rounded-md col-span-1"
+      />
+
+      <input
+        type="text"
+        name="inward_invoice_no"
+        placeholder="Inward Invoice No"
+        class="px-4 py-2 border rounded-md"
+      />
+      <input
+        type="date"
+        name="inward_date"
+        placeholder="Inward Date"
+        class="px-4 py-2 border rounded-md"
+      />
+
+      <input
+        type="text"
+        name="uom"
+        placeholder="UOM (e.g. Nos, Kg)"
+        class="px-4 py-2 border rounded-md"
+      />
+      <input
+        type="number"
+        step="0.01"
+        name="inward_qty"
+        placeholder="Inward Qty"
+        class="px-4 py-2 border rounded-md"
+      />
+
+      <input
+        type="number"
+        step="0.01"
+        name="inward_unit_price"
+        placeholder="Inward Unit Price"
+        class="px-4 py-2 border rounded-md"
+      />
+      <input
+        type="number"
+        step="0.01"
+        name="outward_qty"
+        placeholder="Outward Qty"
+        class="px-4 py-2 border rounded-md"
+      />
+
+      <input
+        type="number"
+        step="0.01"
+        name="outward_unit_price"
+        placeholder="Outward Unit Price"
+        class="px-4 py-2 border rounded-md"
+      />
+      <input
+        type="text"
+        name="outward_invoice_no"
+        placeholder="Outward Invoice No"
+        class="px-4 py-2 border rounded-md"
+      />
+
+      <input
+        type="date"
+        name="outward_date"
+        placeholder="Outward Date"
+        class="px-4 py-2 border rounded-md"
+      />
+      <input
+        type="text"
+        name="eway_bill_number"
+        placeholder="E-Way Bill Number"
+        class="px-4 py-2 border rounded-md"
+      />
+
+      <input
+        type="text"
+        name="vehicle_number"
+        placeholder="Vehicle Number"
+        class="px-4 py-2 border rounded-md"
+      />
+      <input
+        type="text"
+        name="po_number"
+        placeholder="PO Number"
+        class="px-4 py-2 border rounded-md"
+      />
+
+      <div class="col-span-2 flex justify-end space-x-3 mt-4">
+        <button
+          type="button"
+          id="closeModal"
+          class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Add
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 🔹 Scripts -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const inventoryBody = document.getElementById("inventoryBody");
+    const modal = document.getElementById("addItemModal");
+    const openBtn = document.getElementById("addItemBtn");
+    const closeBtn = document.getElementById("closeModal");
+    const form = document.getElementById("addItemForm");
+    const wrapper = document.getElementById("tableScrollWrapper");
+    const loader = document.getElementById("pageLoader");
+
+    const showLoader = (state) => loader?.classList.toggle("hidden", !state);
+
+    // Adjust table height dynamically
+    const adjustTableHeight = () => {
+      const navbar = document.querySelector("nav");
+      const header = document.querySelector("#inventoryContainer > div:first-child");
+      const footer = document.querySelector("footer");
+      const viewportHeight = window.innerHeight;
+      const usedHeight =
+        (navbar?.offsetHeight || 0) +
+        (header?.offsetHeight || 0) +
+        (footer?.offsetHeight || 0) +
+        80;
+      wrapper.style.maxHeight = `${viewportHeight - usedHeight}px`;
+    };
+    window.addEventListener("resize", adjustTableHeight);
+    adjustTableHeight();
+
+    // ✅ Load Inventory Data
+    async function loadInventory() {
+      showLoader(true);
+      try {
+        const res = await fetch("/api/inventory");
+        const data = await res.json();
+        inventoryBody.innerHTML = "";
+
+        if (!data.length) {
+          inventoryBody.innerHTML = `<tr><td colspan="10" class="text-center text-gray-500 py-4">No items found.</td></tr>`;
+          return;
+        }
+
+        data.forEach((item) => {
+          const normalizeDate = (d) => {
+            if (!d) return "";
+            const dateObj = new Date(d);
+            return isNaN(dateObj) ? d : dateObj.toISOString().split("T")[0];
+          };
+
+          item.inward_date = normalizeDate(item.inward_date);
+          item.outward_date = normalizeDate(item.outward_date);
+
+          const alarmClass =
+            item.alarm_status === "Critical"
+              ? "text-red-600 font-bold"
+              : item.alarm_status === "Low Stock"
+              ? "text-yellow-500 font-bold"
+              : "text-green-600 font-semibold";
+
+          const row = document.createElement("tr");
+          row.className = "hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150";
+
+          // Row background highlight
+          if (item.alarm_status === "Critical")
+            row.classList.add("bg-red-50");
+          else if (item.alarm_status === "Low Stock")
+            row.classList.add("bg-yellow-50");
+          else row.classList.add("bg-green-50");
+
+          const editableFields = [
+            "item_code",
+            "item_description",
+            "inward_invoice_no",
+            "inward_date",
+            "uom",
+            "inward_qty",
+            "inward_unit_price",
+            "outward_qty",
+            "outward_invoice_no",
+            "outward_date",
+            "outward_unit_price",
+            "eway_bill_number",
+            "vehicle_number",
+            "po_number",
+          ];
+
+          const displayFields = [
+            "item_code",
+            "item_description",
+            "inward_invoice_no",
+            "inward_date",
+            "uom",
+            "inward_qty",
+            "inward_unit_price",
+            "inward_total_price",
+            "outward_qty",
+            "balance_stock_qty",
+            "alarm_status",
+            "outward_invoice_no",
+            "outward_date",
+            "outward_unit_price",
+            "outward_total_price",
+            "eway_bill_number",
+            "vehicle_number",
+            "po_number",
+          ];
+
+          displayFields.forEach((key) => {
+            const cell = document.createElement("td");
+            cell.className = "px-6 py-3";
+            cell.textContent = item[key] || "";
+
+            if (["inward_total_price", "outward_total_price"].includes(key))
+              cell.classList.add("font-semibold", "text-blue-600");
+            if (key === "balance_stock_qty")
+              cell.classList.add("font-semibold", "text-gray-700");
+            if (key === "alarm_status")
+              cell.classList.add(...alarmClass.split(" "));
+
+            if (editableFields.includes(key)) {
+              cell.addEventListener("dblclick", () =>
+                makeCellEditable(cell, item.id, key, item[key])
+              );
+            }
+            row.appendChild(cell);
+          });
+
+          const actions = document.createElement("td");
+          actions.className = "px-6 py-3 text-center";
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "Delete";
+          deleteBtn.className = "text-red-500 hover:underline";
+          deleteBtn.addEventListener("click", () => deleteItem(item.id, row));
+          actions.appendChild(deleteBtn);
+          row.appendChild(actions);
+
+          inventoryBody.appendChild(row);
+        });
+      } catch (err) {
+        console.error(err);
+        inventoryBody.innerHTML = `<tr><td colspan="10" class="text-center text-red-600 py-4">Error loading data.</td></tr>`;
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    // ✅ Inline Editing + Live Row Update
+    async function makeCellEditable(cell, id, field, oldValue) {
+      const input = document.createElement("input");
+      input.type = ["inward_date", "outward_date"].includes(field) ? "date" : "text";
+      input.value = oldValue || "";
+      input.className =
+        "px-2 py-1 w-full border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-400";
+      cell.textContent = "";
+      cell.appendChild(input);
+      input.focus();
+
+      input.addEventListener("keydown", (e) => e.key === "Enter" && input.blur());
+
+      input.addEventListener("blur", async () => {
+        const newValue = input.value.trim();
+        if (newValue === oldValue) {
+          cell.textContent = oldValue;
+          return;
+        }
+
+        const payload = {};
+        payload[field] = newValue;
+
+        try {
+          const res = await fetch(`/api/update/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (res.ok) {
+            // ✅ Fetch the updated single item only
+            const updatedRes = await fetch(`/api/item/${id}`);
+            const updatedItem = await updatedRes.json();
+
+            // 🔁 Replace the row with new computed data
+            const row = cell.parentElement;
+            row.innerHTML = "";
+
+            row.classList.remove("bg-red-50", "bg-yellow-50", "bg-green-50");
+            if (updatedItem.alarm_status === "Critical")
+              row.classList.add("bg-red-50");
+            else if (updatedItem.alarm_status === "Low Stock")
+              row.classList.add("bg-yellow-50");
+            else row.classList.add("bg-green-50");
+
+            const alarmClass =
+              updatedItem.alarm_status === "Critical"
+                ? "text-red-600 font-bold"
+                : updatedItem.alarm_status === "Low Stock"
+                ? "text-yellow-500 font-bold"
+                : "text-green-600 font-semibold";
+
+            const displayFields = [
+              "item_code",
+              "item_description",
+              "inward_invoice_no",
+              "inward_date",
+              "uom",
+              "inward_qty",
+              "inward_unit_price",
+              "inward_total_price",
+              "outward_qty",
+              "balance_stock_qty",
+              "alarm_status",
+              "outward_invoice_no",
+              "outward_date",
+              "outward_unit_price",
+              "outward_total_price",
+              "eway_bill_number",
+              "vehicle_number",
+              "po_number",
+            ];
+
+            const editableFields = [
+              "item_code",
+              "item_description",
+              "inward_invoice_no",
+              "inward_date",
+              "uom",
+              "inward_qty",
+              "inward_unit_price",
+              "outward_qty",
+              "outward_invoice_no",
+              "outward_date",
+              "outward_unit_price",
+              "eway_bill_number",
+              "vehicle_number",
+              "po_number",
+            ];
+
+            displayFields.forEach((key) => {
+              const newCell = document.createElement("td");
+              newCell.className = "px-6 py-3";
+              newCell.textContent = updatedItem[key] || "";
+
+              if (["inward_total_price", "outward_total_price"].includes(key))
+                newCell.classList.add("font-semibold", "text-blue-600");
+              if (key === "balance_stock_qty")
+                newCell.classList.add("font-semibold", "text-gray-700");
+              if (key === "alarm_status")
+                newCell.classList.add(...alarmClass.split(" "));
+
+              if (editableFields.includes(key)) {
+                newCell.addEventListener("dblclick", () =>
+                  makeCellEditable(newCell, updatedItem.id, key, updatedItem[key])
+                );
+              }
+
+              row.appendChild(newCell);
+            });
+
+            const actions = document.createElement("td");
+            actions.className = "px-6 py-3 text-center";
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Delete";
+            deleteBtn.className = "text-red-500 hover:underline";
+            deleteBtn.addEventListener("click", () => deleteItem(id, row));
+            actions.appendChild(deleteBtn);
+            row.appendChild(actions);
+
+            showToast("✅ Saved & updated!");
+          } else {
+            showToast("❌ Save failed!", true);
+            cell.textContent = oldValue;
+          }
+        } catch (error) {
+          console.error("Update error:", error);
+          showToast("⚠️ Network error", true);
+          cell.textContent = oldValue;
+        }
+      });
+    }
+
+    // ✅ Delete item
+    async function deleteItem(id, row) {
+      if (!confirm("Are you sure you want to delete this item?")) return;
+      const res = await fetch(`/api/delete/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        row.remove();
+        showToast("🗑️ Deleted!");
+      } else {
+        showToast("❌ Delete failed!", true);
+      }
+    }
+
+    // ✅ Toast notifications
+    function showToast(msg, error = false) {
+      const toast = document.createElement("div");
+      toast.textContent = msg;
+      toast.className = `fixed bottom-6 right-6 px-4 py-2 rounded-lg shadow-lg text-white z-50 ${
+        error ? "bg-red-600" : "bg-green-600"
+      }`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+
+    // Modal handling
+    openBtn.addEventListener("click", () => modal.classList.remove("hidden"));
+    closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      showLoader(true);
+      const data = Object.fromEntries(new FormData(form).entries());
+      const res = await fetch("/api/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        showToast("✅ Item added!");
+        modal.classList.add("hidden");
+        form.reset();
+        await loadInventory();
+      } else {
+        showToast("❌ Failed to add!", true);
+      }
+      showLoader(false);
+    });
+
+    loadInventory();
+  });
+</script>
+
+
+<!-- 🔹 Styles -->
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-in-out forwards;
+  }
+
+  /* Alternating row colors */
+  tbody tr:nth-child(odd) {
+    background-color: rgba(249, 250, 251, 0.5);
+  }
+  .dark tbody tr:nth-child(odd) {
+    background-color: rgba(31, 41, 55, 0.3);
+  }
+
+  /* Perfect text alignment & wrapping */
+  th,
+  td {
+    white-space: normal !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    vertical-align: middle;
+  }
+
+  th {
+    font-weight: 600;
+    line-height: 1.3;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  td {
+    line-height: 1.4;
+  }
+
+  /* Scrollbar styling */
+  #tableScrollWrapper::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  #tableScrollWrapper::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 6px;
+  }
+
+  /* Sticky header shadow */
+  #tableScrollWrapper:has(thead.sticky) thead {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+</style>
+
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %} {% block title %}Dashboard | Stratelink{% endblock %} {% block content %}
+<!-- Dashboard Hero Section -->
+<section class="flex flex-col items-center justify-center min-h-[70vh] text-center">
+  <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-10 max-w-2xl transition-all duration-300 hover:shadow-2xl">
+    <h1 class="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mb-5 flex items-center justify-center space-x-3">
+      <span>📦</span>
+      <span>Dashboard</span>
+    </h1>
+    <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">Welcome, <span class="font-semibold">Akash</span>! Ready for live inventory tracking!</p>
+  </div>
+</section>
+
+<!-- Info Section -->
+<section class="max-w-7xl mx-auto mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 px-4">
+
+  <!-- KPI Card -->
+  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Total Items</h3>
+    <p id="totalItems" class="text-3xl font-bold text-blue-700 dark:text-blue-400 mt-2">--</p>
+  </div>
+  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Normal Stock</h3>
+    <p id="normalStock" class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">--</p>
+  </div>
+  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Low Stock</h3>
+    <p id="lowStock" class="text-3xl font-bold text-yellow-500 mt-2">--</p>
+  </div>
+  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Critical Stock</h3>
+    <p id="criticalStock" class="text-3xl font-bold text-red-500 mt-2">--</p>
+  </div>
+  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Total Value (₹)</h3>
+    <p id="totalValue" class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">--</p>
+  </div>
+</section>
+
+<!-- CTA / Next Steps -->
+<section class="max-w-3xl mx-auto mt-20 text-center px-6">
+  <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Ready to manage your stock in real time?</h2>
+  <p class="text-gray-500 dark:text-gray-400 mb-6">Go to your inventory management panel to view, add, and track all stock items dynamically.</p>
+  <a href="/inventory" class="inline-block bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition"> Go to Inventory Dashboard </a>
+</section>
+<script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    const loader = document.getElementById("pageLoader");
+    loader.classList.remove("hidden"); // show loader while loading
+
+    try {
+      const res = await fetch("/api/dashboard-metrics");
+      const data = await res.json();
+
+      // Helper to animate count-up effect
+      const animateCount = (element, target, prefix = "", duration = 1000) => {
+        const start = 0;
+        const stepTime = Math.max(Math.floor(duration / target), 20);
+        let current = start;
+        const timer = setInterval(() => {
+          current += Math.ceil(target / (duration / stepTime));
+          if (current >= target) {
+            current = target;
+            clearInterval(timer);
+          }
+          element.textContent = prefix + current.toLocaleString();
+        }, stepTime);
+      };
+
+      // Update values with smooth animation
+      animateCount(document.getElementById("totalItems"), data.total_items);
+      animateCount(document.getElementById("normalStock"), data.normal_stock);
+      animateCount(document.getElementById("lowStock"), data.low_stock);
+      animateCount(document.getElementById("criticalStock"), data.critical_stock);
+      animateCount(document.getElementById("totalValue"), data.total_value, "₹");
+    } catch (err) {
+      console.error("Error loading dashboard data:", err);
+    } finally {
+      loader.classList.add("hidden"); // hide loader
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+# ---------------------------
+# Python / Flask project .gitignore
+# ---------------------------
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database files (local only)
+*.db
+*.sqlite3
+instance/
+
+# Flask / SQLAlchemy migration files cache
+migrations/versions/
+
+# Environment / config files
+.env
+config.json
+*.cfg
+*.ini
+
+# IDE / editor settings
+.vscode/
+.idea/
+*.swp
+
+# Logs and temporary data
+*.log
+*.bak
+*.tmp
+.DS_Store
+
+# OS-specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Backup or testing files
+test_db_connection.py
