@@ -1,11 +1,13 @@
 from . import db
 from datetime import date
+from sqlalchemy import UniqueConstraint
 
 class StockItem(db.Model):
     __tablename__ = "stock_items"
+    __table_args__ = (UniqueConstraint("item_code", name="uq_stock_item_code"),)
 
     id = db.Column(db.Integer, primary_key=True)
-    item_code = db.Column(db.String(50), nullable=False)
+    item_code = db.Column(db.String(50), nullable=False, unique=True)
     item_description = db.Column(db.String(255))
     inward_invoice_no = db.Column(db.String(100))
     inward_date = db.Column(db.Date, default=date.today)
@@ -25,14 +27,23 @@ class StockItem(db.Model):
     po_number = db.Column(db.String(100))
 
     def compute_fields(self):
-        self.inward_total_price = (self.inward_qty or 0) * (self.inward_unit_price or 0)
-        self.outward_total_price = (self.outward_qty or 0) * (self.outward_unit_price or 0)
-        self.balance_stock_qty = (self.inward_qty or 0) - (self.outward_qty or 0)
+        # Convert all numeric values safely
+        inward_qty = float(self.inward_qty or 0)
+        inward_unit_price = float(self.inward_unit_price or 0)
+        outward_qty = float(self.outward_qty or 0)
+        outward_unit_price = float(self.outward_unit_price or 0)
 
-        # Stock alarm logic
-        if self.balance_stock_qty < (self.inward_qty * 0.6):
+        # ---- TOTAL PRICE CALCULATION (ROUNDED TO 2 DECIMALS) ----
+        self.inward_total_price = round(inward_qty * inward_unit_price, 2)
+        self.outward_total_price = round(outward_qty * outward_unit_price, 2)
+
+        # ---- BALANCE STOCK ----
+        self.balance_stock_qty = inward_qty - outward_qty
+
+        # ---- ALARM LOGIC (unchanged) ----
+        if self.balance_stock_qty < (inward_qty * 0.6):
             self.alarm_status = "Critical"
-        elif self.balance_stock_qty < (self.inward_qty * 0.8):
+        elif self.balance_stock_qty < (inward_qty * 0.8):
             self.alarm_status = "Low Stock"
         else:
             self.alarm_status = "Normal"
@@ -58,3 +69,6 @@ class StockItem(db.Model):
             "vehicle_number": self.vehicle_number,
             "po_number": self.po_number,
         }
+    
+    def __repr__(self):
+        return f"<StockItem id={self.id} code={self.item_code}>"

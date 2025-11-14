@@ -1,82 +1,292 @@
-{% extends "base.html" %} {% block title %}Dashboard | Stratelink{% endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}Dashboard | Stratelink{% endblock %}
+{% block content %}
+
 <!-- Dashboard Hero Section -->
-<section class="flex flex-col items-center justify-center min-h-[70vh] text-center">
-  <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-10 max-w-2xl transition-all duration-300 hover:shadow-2xl">
-    <h1 class="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mb-5 flex items-center justify-center space-x-3">
+<section
+  class="flex flex-col items-center justify-center min-h-[70vh] text-center"
+>
+  <div
+    class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-10 max-w-2xl transition-all duration-300 hover:shadow-2xl"
+  >
+    <h1
+      class="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mb-5 flex items-center justify-center space-x-3"
+    >
       <span>📦</span>
       <span>Dashboard</span>
     </h1>
-    <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">Welcome, <span class="font-semibold">Akash</span>! Ready for live inventory tracking!</p>
+    <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+      Welcome, <span class="font-semibold">Akash</span>! Ready for live
+      inventory tracking!
+    </p>
   </div>
 </section>
 
 <!-- Info Section -->
-<section class="max-w-7xl mx-auto mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 px-4">
+<section
+  class="max-w-7xl mx-auto mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 px-4"
+>
+  <!-- Total Items -->
+  <div
+    class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition"
+  >
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">
+      Total Items
+    </h3>
+    <div class="tooltip mt-2 flex justify-center">
+      <p
+        id="totalItems"
+        class="kpi-value text-2xl font-bold text-blue-700 dark:text-blue-400"
+      >
+        --
+      </p>
+      <span id="totalItemsTooltip" class="tooltip-text"></span>
+    </div>
+  </div>
 
-  <!-- KPI Card -->
-  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
-    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Total Items</h3>
-    <p id="totalItems" class="text-3xl font-bold text-blue-700 dark:text-blue-400 mt-2">--</p>
+  <!-- Normal Stock -->
+  <div
+    onclick="window.location.href='/inventory?status=normal'"
+    class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition cursor-pointer"
+  >
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">
+      Normal Stock
+    </h3>
+    <div class="tooltip mt-2 flex justify-center">
+      <p
+        id="normalStock"
+        class="kpi-value text-2xl font-bold text-green-600 dark:text-green-400"
+      >
+        --
+      </p>
+      <span id="normalStockTooltip" class="tooltip-text"></span>
+    </div>
+    <p class="text-xs text-gray-400 mt-1">(Click to view)</p>
   </div>
-  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
-    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Normal Stock</h3>
-    <p id="normalStock" class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">--</p>
+
+  <!-- Low Stock -->
+  <div
+    onclick="window.location.href='/inventory?status=low'"
+    class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition cursor-pointer"
+  >
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">
+      Low Stock
+    </h3>
+    <div class="tooltip mt-2 flex justify-center">
+      <p id="lowStock" class="kpi-value text-2xl font-bold text-yellow-500">
+        --
+      </p>
+      <span id="lowStockTooltip" class="tooltip-text"></span>
+    </div>
+    <p class="text-xs text-gray-400 mt-1">(Click to view)</p>
   </div>
-  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
-    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Low Stock</h3>
-    <p id="lowStock" class="text-3xl font-bold text-yellow-500 mt-2">--</p>
+
+  <!-- Critical Stock -->
+  <div
+    onclick="window.location.href='/inventory?status=critical'"
+    class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition cursor-pointer"
+  >
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">
+      Critical Stock
+    </h3>
+    <div class="tooltip mt-2 flex justify-center">
+      <p id="criticalStock" class="kpi-value text-2xl font-bold text-red-500">
+        --
+      </p>
+      <span id="criticalStockTooltip" class="tooltip-text"></span>
+    </div>
+    <p class="text-xs text-gray-400 mt-1">(Click to view)</p>
   </div>
-  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
-    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Critical Stock</h3>
-    <p id="criticalStock" class="text-3xl font-bold text-red-500 mt-2">--</p>
-  </div>
-  <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition">
-    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">Total Value (₹)</h3>
-    <p id="totalValue" class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">--</p>
+
+  <!-- Total Value -->
+  <div
+    class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 text-center hover:shadow-lg transition"
+  >
+    <h3 class="text-gray-500 dark:text-gray-400 text-sm uppercase">
+      Total Value (₹)
+    </h3>
+    <div class="tooltip mt-2 flex justify-center">
+      <p
+        id="totalValue"
+        class="kpi-value text-2xl font-bold text-green-600 dark:text-green-400"
+      >
+        --
+      </p>
+      <span id="totalValueTooltip" class="tooltip-text"></span>
+    </div>
   </div>
 </section>
 
-<!-- CTA / Next Steps -->
+<!-- CTA Section -->
 <section class="max-w-3xl mx-auto mt-20 text-center px-6">
-  <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Ready to manage your stock in real time?</h2>
-  <p class="text-gray-500 dark:text-gray-400 mb-6">Go to your inventory management panel to view, add, and track all stock items dynamically.</p>
-  <a href="/inventory" class="inline-block bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition"> Go to Inventory Dashboard </a>
+  <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
+    Ready to manage your stock in real time?
+  </h2>
+  <p class="text-gray-500 dark:text-gray-400 mb-6">
+    Go to your inventory management panel to view, add, and track all stock
+    items dynamically.
+  </p>
+  <a
+    href="/inventory"
+    class="inline-block bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition"
+  >
+    Go to Inventory Dashboard
+  </a>
 </section>
+
+<!-- KPI Animation Script -->
 <script>
   document.addEventListener("DOMContentLoaded", async () => {
-    const loader = document.getElementById("pageLoader");
-    loader.classList.remove("hidden"); // show loader while loading
+    // ---- Formatters ----
+    function formatShortCount(num) {
+      const n = Number(num) || 0;
+      if (n >= 1e7) return (n / 1e7).toFixed(2) + " Cr";
+      if (n >= 1e5) return (n / 1e5).toFixed(2) + " L";
+      if (n >= 1e3) return (n / 1e3).toFixed(2) + " K";
+      return n.toLocaleString("en-IN");
+    }
+
+    function formatShortINR(num) {
+      const n = Number(num) || 0;
+      if (n >= 1e7) return "₹" + (n / 1e7).toFixed(2) + " Cr";
+      if (n >= 1e5) return "₹" + (n / 1e5).toFixed(2) + " L";
+      if (n >= 1e3) return "₹" + (n / 1e3).toFixed(2) + " K";
+      return "₹" + n.toLocaleString("en-IN");
+    }
+
+    function formatFullINR(num) {
+      return (
+        "₹" +
+        (Number(num) || 0).toLocaleString("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      );
+    }
+
+    // ---- Animation for counts ----
+    function animateShortCount(el, target, duration = 900) {
+      const end = Number(target) || 0;
+      let startTime = null;
+
+      function step(ts) {
+        if (!startTime) startTime = ts;
+        const progress = Math.min((ts - startTime) / duration, 1);
+        const value = end * progress;
+        el.textContent = formatShortCount(value);
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    // ---- Animation for money ----
+    function animateShortCurrency(el, target, duration = 1200) {
+      const end = Number(target) || 0;
+      let startTime = null;
+
+      function step(ts) {
+        if (!startTime) startTime = ts;
+        const progress = Math.min((ts - startTime) / duration, 1);
+        const value = end * progress;
+        el.textContent = formatShortINR(value);
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    // ---- Apply shrink if overflow ----
+    function shrinkIfOverflow(el) {
+      requestAnimationFrame(() => {
+        if (el.scrollWidth > el.clientWidth) el.classList.add("shrink");
+      });
+    }
 
     try {
       const res = await fetch("/api/dashboard-metrics");
       const data = await res.json();
 
-      // Helper to animate count-up effect
-      const animateCount = (element, target, prefix = "", duration = 1000) => {
-        const start = 0;
-        const stepTime = Math.max(Math.floor(duration / target), 20);
-        let current = start;
-        const timer = setInterval(() => {
-          current += Math.ceil(target / (duration / stepTime));
-          if (current >= target) {
-            current = target;
-            clearInterval(timer);
-          }
-          element.textContent = prefix + current.toLocaleString();
-        }, stepTime);
+      // Elements
+      const el = {
+        totalItems: document.getElementById("totalItems"),
+        normalStock: document.getElementById("normalStock"),
+        lowStock: document.getElementById("lowStock"),
+        criticalStock: document.getElementById("criticalStock"),
+        totalValue: document.getElementById("totalValue"),
+
+        totalItemsTooltip: document.getElementById("totalItemsTooltip"),
+        normalStockTooltip: document.getElementById("normalStockTooltip"),
+        lowStockTooltip: document.getElementById("lowStockTooltip"),
+        criticalStockTooltip: document.getElementById("criticalStockTooltip"),
+        totalValueTooltip: document.getElementById("totalValueTooltip"),
       };
 
-      // Update values with smooth animation
-      animateCount(document.getElementById("totalItems"), data.total_items);
-      animateCount(document.getElementById("normalStock"), data.normal_stock);
-      animateCount(document.getElementById("lowStock"), data.low_stock);
-      animateCount(document.getElementById("criticalStock"), data.critical_stock);
-      animateCount(document.getElementById("totalValue"), data.total_value, "₹");
-    } catch (err) {
-      console.error("Error loading dashboard data:", err);
-    } finally {
-      loader.classList.add("hidden"); // hide loader
+      // Tooltips show full values
+      el.totalItemsTooltip.textContent =
+        data.total_items.toLocaleString("en-IN");
+      el.normalStockTooltip.textContent =
+        data.normal_stock.toLocaleString("en-IN");
+      el.lowStockTooltip.textContent = data.low_stock.toLocaleString("en-IN");
+      el.criticalStockTooltip.textContent =
+        data.critical_stock.toLocaleString("en-IN");
+      el.totalValueTooltip.textContent = formatFullINR(data.total_value);
+
+      // Animate counters
+      animateShortCount(el.totalItems, data.total_items);
+      animateShortCount(el.normalStock, data.normal_stock);
+      animateShortCount(el.lowStock, data.low_stock);
+      animateShortCount(el.criticalStock, data.critical_stock);
+
+      animateShortCurrency(el.totalValue, data.total_value);
+
+      // Shrink text if needed
+      setTimeout(() => {
+        shrinkIfOverflow(el.totalItems);
+        shrinkIfOverflow(el.normalStock);
+        shrinkIfOverflow(el.lowStock);
+        shrinkIfOverflow(el.criticalStock);
+        shrinkIfOverflow(el.totalValue);
+      }, 1300);
+    } catch (e) {
+      console.error("Dashboard load error:", e);
     }
   });
 </script>
+
+<!-- Tooltip + Shrink Styling -->
+<style>
+  .tooltip {
+    position: relative;
+  }
+  .tooltip-text {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: opacity 0.2s ease;
+    z-index: 50;
+  }
+  .tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .kpi-value {
+    max-width: 100%;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: clamp(1.05rem, 2.2vw, 1.5rem);
+  }
+  .kpi-value.shrink {
+    font-size: 1.05rem !important;
+  }
+</style>
+
 {% endblock %}

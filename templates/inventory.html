@@ -4,7 +4,7 @@
 <!-- 🔹 Inventory Container -->
 <div
   id="inventoryContainer"
-  class="max-w-7xl mx-auto py-6 px-6 flex flex-col h-full"
+  class="max-w-7xl mx-auto pt-2 pb-4 px-5 flex flex-col h-full"
 >
   <!-- Header -->
   <div class="flex justify-between items-center mb-6 flex-shrink-0">
@@ -19,6 +19,54 @@
     >
       ➕ <span>Add New Item</span>
     </button>
+  </div>
+
+  <!-- 🔹 Filter Bar -->
+  <!-- 🔹 Filter Bar (UPDATED) -->
+  <div
+    id="filterBar"
+    class="flex flex-col lg:flex-row justify-between items-center mb-5 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 gap-3"
+  >
+    <!-- 🔹 Filter Dropdown -->
+    <div class="flex items-center space-x-2 w-full lg:w-auto">
+      <label
+        for="statusFilter"
+        class="text-gray-700 dark:text-gray-300 font-medium shrink-0"
+        >Show:</label
+      >
+      <select
+        id="statusFilter"
+        class="flex-1 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">All Items</option>
+        <option value="normal">Normal Stock</option>
+        <option value="low">Low Stock</option>
+        <option value="critical">Critical Stock</option>
+      </select>
+    </div>
+
+    <!-- 🔍 Search Bar -->
+    <div class="relative flex-1 w-full lg:max-w-md">
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search by code, description, or invoice..."
+        class="border border-gray-300 dark:border-gray-600 rounded-md pl-10 pr-3 py-2 w-full bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+      />
+      <svg
+        class="absolute left-3 top-2.5 w-5 h-5 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M21 21l-5.2-5.2m0 0A7.8 7.8 0 105.2 5.2a7.8 7.8 0 0010.6 10.6z"
+        />
+      </svg>
+    </div>
   </div>
 
   <!-- 🔹 Table Section -->
@@ -73,6 +121,11 @@
         </tbody>
       </table>
     </div>
+    <!-- add this directly below the closing div for #tableScrollWrapper -->
+    <div
+      id="pagination"
+      class="flex items-center justify-center gap-2 py-3 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700"
+    ></div>
   </div>
 </div>
 
@@ -215,146 +268,296 @@
     const form = document.getElementById("addItemForm");
     const wrapper = document.getElementById("tableScrollWrapper");
     const loader = document.getElementById("pageLoader");
+    const statusFilter = document.getElementById("statusFilter");
+    const searchInput = document.getElementById("searchInput");
+    const paginationContainer = document.getElementById("pagination");
 
     const showLoader = (state) => loader?.classList.toggle("hidden", !state);
 
-    // Adjust table height dynamically
+    // layout
     const adjustTableHeight = () => {
       const navbar = document.querySelector("nav");
-      const header = document.querySelector("#inventoryContainer > div:first-child");
+      const header = document.querySelector(
+        "#inventoryContainer > div:first-child"
+      );
       const footer = document.querySelector("footer");
       const viewportHeight = window.innerHeight;
       const usedHeight =
         (navbar?.offsetHeight || 0) +
         (header?.offsetHeight || 0) +
         (footer?.offsetHeight || 0) +
-        80;
+        160; // a bit extra for filter + pagination
       wrapper.style.maxHeight = `${viewportHeight - usedHeight}px`;
     };
     window.addEventListener("resize", adjustTableHeight);
     adjustTableHeight();
 
-    // ✅ Load Inventory Data
-    async function loadInventory() {
-      showLoader(true);
-      try {
-        const res = await fetch("/api/inventory");
-        const data = await res.json();
-        inventoryBody.innerHTML = "";
+    // pagination & filters state
+    let currentPage = 1;
+    let currentLimit = 50;
+    let currentStatus = "";
+    let currentSearch = "";
 
-        if (!data.length) {
-          inventoryBody.innerHTML = `<tr><td colspan="10" class="text-center text-gray-500 py-4">No items found.</td></tr>`;
-          return;
+    // simple debounce helper
+    function debounce(fn, wait) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    // --- Render helpers (keeps your original rendering style) ---
+    function normalizeDate(d) {
+      if (!d) return "";
+      const dateObj = new Date(d);
+      return isNaN(dateObj) ? d : dateObj.toISOString().split("T")[0];
+    }
+
+    function makeAlarmClass(alarm) {
+      if (alarm === "Critical") return "text-red-600 font-bold";
+      if (alarm === "Low Stock") return "text-yellow-500 font-bold";
+      return "text-green-600 font-semibold";
+    }
+
+    // create a table row for one item (keeps your existing classes and events)
+    function createRow(item) {
+      const alarmClass = makeAlarmClass(item.alarm_status);
+
+      const row = document.createElement("tr");
+      row.className =
+        "hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150";
+
+      if (item.alarm_status === "Critical") row.classList.add("bg-red-50");
+      else if (item.alarm_status === "Low Stock")
+        row.classList.add("bg-yellow-50");
+      else row.classList.add("bg-green-50");
+
+      const displayFields = [
+        "item_code",
+        "item_description",
+        "inward_invoice_no",
+        "inward_date",
+        "uom",
+        "inward_qty",
+        "inward_unit_price",
+        "inward_total_price",
+        "outward_qty",
+        "balance_stock_qty",
+        "alarm_status",
+        "outward_invoice_no",
+        "outward_date",
+        "outward_unit_price",
+        "outward_total_price",
+        "eway_bill_number",
+        "vehicle_number",
+        "po_number",
+      ];
+
+      displayFields.forEach((key) => {
+        const cell = document.createElement("td");
+        cell.className = "px-6 py-3";
+        let value = item[key] || "";
+
+        if (key === "inward_date" || key === "outward_date")
+          value = normalizeDate(value);
+        cell.textContent = value;
+
+        if (["inward_total_price", "outward_total_price"].includes(key))
+          cell.classList.add("font-semibold", "text-blue-600");
+        if (key === "balance_stock_qty")
+          cell.classList.add("font-semibold", "text-gray-700");
+        if (key === "alarm_status")
+          cell.classList.add(...alarmClass.split(" "));
+
+        if (
+          [
+            "item_code",
+            "item_description",
+            "inward_invoice_no",
+            "inward_date",
+            "uom",
+            "inward_qty",
+            "inward_unit_price",
+            "outward_qty",
+            "outward_invoice_no",
+            "outward_date",
+            "outward_unit_price",
+            "eway_bill_number",
+            "vehicle_number",
+            "po_number",
+          ].includes(key)
+        ) {
+          cell.addEventListener("dblclick", () =>
+            makeCellEditable(cell, item.id, key, item[key])
+          );
         }
 
-        data.forEach((item) => {
-          const normalizeDate = (d) => {
-            if (!d) return "";
-            const dateObj = new Date(d);
-            return isNaN(dateObj) ? d : dateObj.toISOString().split("T")[0];
-          };
+        row.appendChild(cell);
+      });
 
-          item.inward_date = normalizeDate(item.inward_date);
-          item.outward_date = normalizeDate(item.outward_date);
+      // actions column
+      const actions = document.createElement("td");
+      actions.className = "px-6 py-3 text-center";
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.className = "text-red-500 hover:underline";
+      deleteBtn.addEventListener("click", () => deleteItem(item.id, row));
+      actions.appendChild(deleteBtn);
+      row.appendChild(actions);
 
-          const alarmClass =
-            item.alarm_status === "Critical"
-              ? "text-red-600 font-bold"
-              : item.alarm_status === "Low Stock"
-              ? "text-yellow-500 font-bold"
-              : "text-green-600 font-semibold";
+      return row;
+    }
 
-          const row = document.createElement("tr");
-          row.className = "hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150";
+    // render table rows (replaces full-load rendering)
+    function renderTable(items) {
+      inventoryBody.innerHTML = "";
+      if (!items || items.length === 0) {
+        inventoryBody.innerHTML = `<tr><td colspan="19" class="text-center text-gray-500 py-4">No items found.</td></tr>`;
+        return;
+      }
 
-          // Row background highlight
-          if (item.alarm_status === "Critical")
-            row.classList.add("bg-red-50");
-          else if (item.alarm_status === "Low Stock")
-            row.classList.add("bg-yellow-50");
-          else row.classList.add("bg-green-50");
+      items.forEach((item) => {
+        inventoryBody.appendChild(createRow(item));
+      });
+    }
 
-          const editableFields = [
-            "item_code",
-            "item_description",
-            "inward_invoice_no",
-            "inward_date",
-            "uom",
-            "inward_qty",
-            "inward_unit_price",
-            "outward_qty",
-            "outward_invoice_no",
-            "outward_date",
-            "outward_unit_price",
-            "eway_bill_number",
-            "vehicle_number",
-            "po_number",
-          ];
+    // render pagination controls
+    function renderPagination(page, totalPages) {
+      paginationContainer.innerHTML = "";
+      if (!totalPages || totalPages <= 1) return;
 
-          const displayFields = [
-            "item_code",
-            "item_description",
-            "inward_invoice_no",
-            "inward_date",
-            "uom",
-            "inward_qty",
-            "inward_unit_price",
-            "inward_total_price",
-            "outward_qty",
-            "balance_stock_qty",
-            "alarm_status",
-            "outward_invoice_no",
-            "outward_date",
-            "outward_unit_price",
-            "outward_total_price",
-            "eway_bill_number",
-            "vehicle_number",
-            "po_number",
-          ];
+      const addBtn = (label, p, disabled = false, isActive = false) => {
+        const btn = document.createElement("button");
+        btn.textContent = label;
+        btn.className =
+          "px-3 py-1 text-sm rounded " +
+          (disabled
+            ? "opacity-50 cursor-not-allowed "
+            : "hover:bg-gray-100 dark:hover:bg-gray-700 ") +
+          (isActive ? "bg-blue-600 text-white" : "bg-white dark:bg-gray-800");
 
-          displayFields.forEach((key) => {
-            const cell = document.createElement("td");
-            cell.className = "px-6 py-3";
-            cell.textContent = item[key] || "";
-
-            if (["inward_total_price", "outward_total_price"].includes(key))
-              cell.classList.add("font-semibold", "text-blue-600");
-            if (key === "balance_stock_qty")
-              cell.classList.add("font-semibold", "text-gray-700");
-            if (key === "alarm_status")
-              cell.classList.add(...alarmClass.split(" "));
-
-            if (editableFields.includes(key)) {
-              cell.addEventListener("dblclick", () =>
-                makeCellEditable(cell, item.id, key, item[key])
-              );
-            }
-            row.appendChild(cell);
+        if (!disabled)
+          btn.addEventListener("click", () => {
+            if (p === currentPage) return;
+            loadPage(p);
           });
+        paginationContainer.appendChild(btn);
+      };
 
-          const actions = document.createElement("td");
-          actions.className = "px-6 py-3 text-center";
-          const deleteBtn = document.createElement("button");
-          deleteBtn.textContent = "Delete";
-          deleteBtn.className = "text-red-500 hover:underline";
-          deleteBtn.addEventListener("click", () => deleteItem(item.id, row));
-          actions.appendChild(deleteBtn);
-          row.appendChild(actions);
+      addBtn("Prev", Math.max(1, page - 1), page === 1);
 
-          inventoryBody.appendChild(row);
-        });
+      // show a sliding window of pages (keep it compact for very large totalPages)
+      const maxButtons = 7;
+      let start = Math.max(1, page - Math.floor(maxButtons / 2));
+      let end = start + maxButtons - 1;
+      if (end > totalPages) {
+        end = totalPages;
+        start = Math.max(1, end - maxButtons + 1);
+      }
+
+      if (start > 1) {
+        addBtn("1", 1);
+        if (start > 2) {
+          const dots = document.createElement("span");
+          dots.textContent = "…";
+          dots.className = "px-2 text-sm";
+          paginationContainer.appendChild(dots);
+        }
+      }
+
+      for (let i = start; i <= end; i++) {
+        addBtn(String(i), i, false, i === page);
+      }
+
+      if (end < totalPages) {
+        if (end < totalPages - 1) {
+          const dots = document.createElement("span");
+          dots.textContent = "…";
+          dots.className = "px-2 text-sm";
+          paginationContainer.appendChild(dots);
+        }
+        addBtn(String(totalPages), totalPages);
+      }
+
+      addBtn("Next", Math.min(totalPages, page + 1), page === totalPages);
+    }
+
+    // --- Core: load one page from server ---
+    async function loadPage(page = 1) {
+      currentPage = page;
+      showLoader(true);
+
+      // build API url with params
+      const params = new URLSearchParams();
+      params.set("page", currentPage);
+      params.set("limit", currentLimit);
+      if (currentStatus) params.set("status", currentStatus);
+      if (currentSearch) params.set("search", currentSearch);
+
+      try {
+        const res = await fetch(`/api/inventory?${params.toString()}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || err.detail || `Status ${res.status}`);
+        }
+        const body = await res.json();
+
+        // body.items should be an array
+        const items = body.items || [];
+        renderTable(items);
+
+        const totalPages =
+          body.total_pages ||
+          Math.ceil((body.total_items || 0) / currentLimit) ||
+          1;
+        renderPagination(body.page || currentPage, totalPages);
       } catch (err) {
-        console.error(err);
-        inventoryBody.innerHTML = `<tr><td colspan="10" class="text-center text-red-600 py-4">Error loading data.</td></tr>`;
+        console.error("Load page error:", err);
+        inventoryBody.innerHTML = `<tr><td colspan="19" class="text-center text-red-600 py-4">Error loading data.</td></tr>`;
+        paginationContainer.innerHTML = "";
       } finally {
         showLoader(false);
       }
     }
 
-    // ✅ Inline Editing + Live Row Update
+    // --- Search & Filter wiring ---
+    // read initial url status param (preserve your existing behavior)
+    (function readInitialStatusFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get("status") || "";
+      if (s && !statusFilter.value) statusFilter.value = s;
+      currentStatus = statusFilter.value || "";
+    })();
+
+    if (statusFilter) {
+      statusFilter.addEventListener("change", () => {
+        currentStatus = statusFilter.value;
+        const url = new URL(window.location);
+        if (currentStatus) url.searchParams.set("status", currentStatus);
+        else url.searchParams.delete("status");
+        window.history.pushState({}, "", url);
+        loadPage(1);
+      });
+    }
+
+    // debounce backend search to avoid spamming requests
+    const debouncedSearch = debounce(() => {
+      currentSearch = searchInput.value.trim().toLowerCase();
+      loadPage(1);
+    }, 300);
+
+    if (searchInput) {
+      searchInput.addEventListener("input", debouncedSearch);
+    }
+
+    // ---------- keep your existing CRUD helpers (copied/adapted) ----------
+    // Inline Editing + Live Row Update (unchanged logic)
     async function makeCellEditable(cell, id, field, oldValue) {
       const input = document.createElement("input");
-      input.type = ["inward_date", "outward_date"].includes(field) ? "date" : "text";
+      input.type = ["inward_date", "outward_date"].includes(field)
+        ? "date"
+        : "text";
       input.value = oldValue || "";
       input.className =
         "px-2 py-1 w-full border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-400";
@@ -362,7 +565,10 @@
       cell.appendChild(input);
       input.focus();
 
-      input.addEventListener("keydown", (e) => e.key === "Enter" && input.blur());
+      input.addEventListener(
+        "keydown",
+        (e) => e.key === "Enter" && input.blur()
+      );
 
       input.addEventListener("blur", async () => {
         const newValue = input.value.trim();
@@ -381,100 +587,22 @@
             body: JSON.stringify(payload),
           });
 
+          const body = await res.json().catch(() => ({}));
+
           if (res.ok) {
-            // ✅ Fetch the updated single item only
-            const updatedRes = await fetch(`/api/item/${id}`);
-            const updatedItem = await updatedRes.json();
-
-            // 🔁 Replace the row with new computed data
-            const row = cell.parentElement;
-            row.innerHTML = "";
-
-            row.classList.remove("bg-red-50", "bg-yellow-50", "bg-green-50");
-            if (updatedItem.alarm_status === "Critical")
-              row.classList.add("bg-red-50");
-            else if (updatedItem.alarm_status === "Low Stock")
-              row.classList.add("bg-yellow-50");
-            else row.classList.add("bg-green-50");
-
-            const alarmClass =
-              updatedItem.alarm_status === "Critical"
-                ? "text-red-600 font-bold"
-                : updatedItem.alarm_status === "Low Stock"
-                ? "text-yellow-500 font-bold"
-                : "text-green-600 font-semibold";
-
-            const displayFields = [
-              "item_code",
-              "item_description",
-              "inward_invoice_no",
-              "inward_date",
-              "uom",
-              "inward_qty",
-              "inward_unit_price",
-              "inward_total_price",
-              "outward_qty",
-              "balance_stock_qty",
-              "alarm_status",
-              "outward_invoice_no",
-              "outward_date",
-              "outward_unit_price",
-              "outward_total_price",
-              "eway_bill_number",
-              "vehicle_number",
-              "po_number",
-            ];
-
-            const editableFields = [
-              "item_code",
-              "item_description",
-              "inward_invoice_no",
-              "inward_date",
-              "uom",
-              "inward_qty",
-              "inward_unit_price",
-              "outward_qty",
-              "outward_invoice_no",
-              "outward_date",
-              "outward_unit_price",
-              "eway_bill_number",
-              "vehicle_number",
-              "po_number",
-            ];
-
-            displayFields.forEach((key) => {
-              const newCell = document.createElement("td");
-              newCell.className = "px-6 py-3";
-              newCell.textContent = updatedItem[key] || "";
-
-              if (["inward_total_price", "outward_total_price"].includes(key))
-                newCell.classList.add("font-semibold", "text-blue-600");
-              if (key === "balance_stock_qty")
-                newCell.classList.add("font-semibold", "text-gray-700");
-              if (key === "alarm_status")
-                newCell.classList.add(...alarmClass.split(" "));
-
-              if (editableFields.includes(key)) {
-                newCell.addEventListener("dblclick", () =>
-                  makeCellEditable(newCell, updatedItem.id, key, updatedItem[key])
-                );
-              }
-
-              row.appendChild(newCell);
-            });
-
-            const actions = document.createElement("td");
-            actions.className = "px-6 py-3 text-center";
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Delete";
-            deleteBtn.className = "text-red-500 hover:underline";
-            deleteBtn.addEventListener("click", () => deleteItem(id, row));
-            actions.appendChild(deleteBtn);
-            row.appendChild(actions);
-
+            const updatedItem = body.item
+              ? body.item
+              : await (await fetch(`/api/item/${id}`)).json();
+            // update visible row: easiest is to re-load current page to keep consistency
+            // but to keep inline speed, try to patch the current row if possible:
+            const parentRow = cell.parentElement;
+            updateRow(parentRow, updatedItem);
             showToast("✅ Saved & updated!");
           } else {
-            showToast("❌ Save failed!", true);
+            const msg = body.error || body.detail || "❌ Save failed!";
+            showToast(msg, true);
+            input.classList.add("input-error");
+            setTimeout(() => input.classList.remove("input-error"), 600);
             cell.textContent = oldValue;
           }
         } catch (error) {
@@ -485,19 +613,108 @@
       });
     }
 
-    // ✅ Delete item
+    // Row refresh helper (re-uses your function)
+    function updateRow(row, updatedItem) {
+      row.innerHTML = "";
+
+      row.classList.remove("bg-red-50", "bg-yellow-50", "bg-green-50");
+      if (updatedItem.alarm_status === "Critical")
+        row.classList.add("bg-red-50");
+      else if (updatedItem.alarm_status === "Low Stock")
+        row.classList.add("bg-yellow-50");
+      else row.classList.add("bg-green-50");
+
+      const alarmClass = makeAlarmClass(updatedItem.alarm_status);
+
+      const displayFields = [
+        "item_code",
+        "item_description",
+        "inward_invoice_no",
+        "inward_date",
+        "uom",
+        "inward_qty",
+        "inward_unit_price",
+        "inward_total_price",
+        "outward_qty",
+        "balance_stock_qty",
+        "alarm_status",
+        "outward_invoice_no",
+        "outward_date",
+        "outward_unit_price",
+        "outward_total_price",
+        "eway_bill_number",
+        "vehicle_number",
+        "po_number",
+      ];
+
+      displayFields.forEach((key) => {
+        const cell = document.createElement("td");
+        cell.className = "px-6 py-3";
+        let value = updatedItem[key] || "";
+        if (key === "inward_date" || key === "outward_date")
+          value = normalizeDate(value);
+        cell.textContent = value;
+
+        if (["inward_total_price", "outward_total_price"].includes(key))
+          cell.classList.add("font-semibold", "text-blue-600");
+        if (key === "balance_stock_qty")
+          cell.classList.add("font-semibold", "text-gray-700");
+        if (key === "alarm_status")
+          cell.classList.add(...alarmClass.split(" "));
+
+        if (
+          [
+            "item_code",
+            "item_description",
+            "inward_invoice_no",
+            "inward_date",
+            "uom",
+            "inward_qty",
+            "inward_unit_price",
+            "outward_qty",
+            "outward_invoice_no",
+            "outward_date",
+            "outward_unit_price",
+            "eway_bill_number",
+            "vehicle_number",
+            "po_number",
+          ].includes(key)
+        ) {
+          cell.addEventListener("dblclick", () =>
+            makeCellEditable(cell, updatedItem.id, key, updatedItem[key])
+          );
+        }
+        row.appendChild(cell);
+      });
+
+      const actions = document.createElement("td");
+      actions.className = "px-6 py-3 text-center";
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.className = "text-red-500 hover:underline";
+      deleteBtn.addEventListener("click", () =>
+        deleteItem(updatedItem.id, row)
+      );
+      actions.appendChild(deleteBtn);
+      row.appendChild(actions);
+    }
+
+    // Delete item
     async function deleteItem(id, row) {
       if (!confirm("Are you sure you want to delete this item?")) return;
       const res = await fetch(`/api/delete/${id}`, { method: "DELETE" });
       if (res.ok) {
+        // remove row locally; total count may be stale but that's fine until next load
         row.remove();
         showToast("🗑️ Deleted!");
+        // optional: reload current page to keep pagination accurate
+        // loadPage(currentPage);
       } else {
         showToast("❌ Delete failed!", true);
       }
     }
 
-    // ✅ Toast notifications
+    // Toasts
     function showToast(msg, error = false) {
       const toast = document.createElement("div");
       toast.textContent = msg;
@@ -505,44 +722,87 @@
         error ? "bg-red-600" : "bg-green-600"
       }`;
       document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 2000);
+      setTimeout(() => toast.remove(), 2500);
     }
 
     // Modal handling
     openBtn.addEventListener("click", () => modal.classList.remove("hidden"));
     closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
 
+    // Enhanced form submission (keeps your code, but reloads current page after success)
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      showLoader(true);
+
+      const submitBtn = form.querySelector("button[type='submit']");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Saving...";
+
       const data = Object.fromEntries(new FormData(form).entries());
-      const res = await fetch("/api/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        showToast("✅ Item added!");
-        modal.classList.add("hidden");
-        form.reset();
-        await loadInventory();
-      } else {
-        showToast("❌ Failed to add!", true);
+
+      if (!data.item_code) {
+        showToast("❌ Item Code is required.", true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Add";
+        return;
       }
-      showLoader(false);
+
+      const numericFields = [
+        "inward_qty",
+        "inward_unit_price",
+        "outward_qty",
+        "outward_unit_price",
+      ];
+      for (const field of numericFields) {
+        if (data[field] && isNaN(Number(data[field]))) {
+          showToast(`❌ ${field.replace("_", " ")} must be a number.`, true);
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Add";
+          return;
+        }
+      }
+
+      showLoader(true);
+
+      try {
+        const res = await fetch("/api/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        const body = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          showToast("✅ Item added!");
+          modal.classList.add("hidden");
+          form.reset();
+          // refresh current page to show the new entry (or go to page 1)
+          loadPage(1);
+        } else {
+          showToast(body.error || "❌ Failed to add item.", true);
+        }
+      } catch (error) {
+        console.error("Add error:", error);
+        showToast("⚠️ Network error", true);
+      } finally {
+        showLoader(false);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Add";
+      }
     });
 
-    loadInventory();
+    // initial load
+    loadPage(1);
   });
 </script>
 
-
 <!-- 🔹 Styles -->
 <style>
+  /* === Smooth Animation === */
   @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(5px);
+      transform: translateY(4px);
     }
     to {
       opacity: 1;
@@ -550,10 +810,76 @@
     }
   }
   .animate-fadeIn {
-    animation: fadeIn 0.4s ease-in-out forwards;
+    animation: fadeIn 0.3s ease-in-out forwards;
   }
 
-  /* Alternating row colors */
+  /* === Layout & Typography === */
+  #inventoryContainer {
+    padding: 1rem 1.5rem;
+  }
+
+  #inventoryContainer h1 {
+    font-size: 1.9rem;
+    line-height: 1.3;
+  }
+
+  #addItemBtn {
+    font-size: 0.95rem;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* === Filter & Search Bar === */
+  #filterBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fafafa;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  #statusFilter,
+  #searchInput {
+    font-size: 0.95rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  #searchInput {
+    padding-left: 2.4rem;
+  }
+
+  #searchInput:focus,
+  #statusFilter:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #2563eb40;
+    border-color: #2563eb;
+  }
+
+  /* === Table === */
+  table th {
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 0.6rem;
+  }
+  table td {
+    font-size: 0.9rem;
+    padding: 0.6rem;
+    line-height: 1.4;
+  }
+
+  th,
+  td {
+    white-space: normal !important;
+    vertical-align: middle;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
   tbody tr:nth-child(odd) {
     background-color: rgba(249, 250, 251, 0.5);
   }
@@ -561,27 +887,6 @@
     background-color: rgba(31, 41, 55, 0.3);
   }
 
-  /* Perfect text alignment & wrapping */
-  th,
-  td {
-    white-space: normal !important;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    vertical-align: middle;
-  }
-
-  th {
-    font-weight: 600;
-    line-height: 1.3;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
-
-  td {
-    line-height: 1.4;
-  }
-
-  /* Scrollbar styling */
   #tableScrollWrapper::-webkit-scrollbar {
     height: 8px;
     width: 8px;
@@ -591,9 +896,43 @@
     border-radius: 6px;
   }
 
-  /* Sticky header shadow */
-  #tableScrollWrapper:has(thead.sticky) thead {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  /* === Table Card Look === */
+  #tableContainer {
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  /* === Navbar Refinement === */
+  nav {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(6px);
+  }
+
+  /* === Responsive === */
+  @media (max-width: 1024px) {
+    #filterBar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+    #searchInput,
+    #statusFilter {
+      width: 100%;
+    }
+    #inventoryContainer h1 {
+      font-size: 1.7rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    #addItemBtn {
+      width: 100%;
+    }
+    table th,
+    table td {
+      font-size: 0.8rem;
+    }
   }
 </style>
 
